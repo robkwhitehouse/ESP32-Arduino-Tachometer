@@ -9,6 +9,7 @@
  * to record upto 6,000 RPM. It could go a lot faster if necessary by increasing
  * the sample rate.
  * 
+ * V0.3 - 6 Jan 2021 - RKW
  */
 
 #include "BluetoothSerial.h"
@@ -21,7 +22,11 @@ BluetoothSerial SerialBT;
 
 #define IR_SENSOR_PIN 15
 #define SAMPLE_RATE 20 //samples per second
-uint32_t samplePeriod; //microseconds
+
+
+const uint32_t samplePeriod = 1000000/SAMPLE_RATE; //in microseconds
+const uint32_t sampleMillis = samplePeriod/1000;
+
 uint32_t IRprevious = 0;//Records the previous InfraRed sensor state
 uint32_t prevPulseTime = 0;//records millis() when new pulse
 byte IRpulse = 0;//Records the number of sensor transitions
@@ -50,11 +55,7 @@ void IRAM_ATTR onTimer(){
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("Rev Counter");
-  samplePeriod = 1000000/SAMPLE_RATE;//microseconds
 
-  // Set BTN_STOP_ALARM to input mode
-//  pinMode(BTN_STOP_ALARM, INPUT);
-   Serial.println("In setup()");
   // Create semaphore to inform us when the timer has fired
   timerSemaphore = xSemaphoreCreateBinary();
 
@@ -76,7 +77,7 @@ void setup() {
 
 void loop() {
   byte IRstate = 0;
-  uint32_t period = 0;
+  uint32_t period = 0xFFFF;
   uint16_t rpm = 0;
   
   // If Timer has fired
@@ -103,12 +104,16 @@ void loop() {
         IRpulse =0;
         //Calc period of revolution
         period = isrTime - prevPulseTime;//milliseconds
-        rpm = 60 * 1000 / period;
         prevPulseTime = isrTime;
-        averageRPM = (previousRPM + rpm) / 2;
-        previousRPM = rpm;
-      }
-    }
+
+      } 
+    } else period += sampleMillis;//No new pulse this time around
+    
+    if (period) rpm = 60 * 1000 / period;
+    //provide a bit of smoothing
+    averageRPM = (previousRPM + rpm) / 2;
+    previousRPM = rpm; 
+       
     if (++sampleCtr > 3) { //send the result every 4th sample
       SerialBT.println(averageRPM);
       sampleCtr = 0;
