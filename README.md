@@ -1,6 +1,6 @@
 # ESP32-Arduino-Tachometer
 
-***  In Development - this is working code but still has known bugs ***
+***  In Test - this is code complete and currently under test ***
 
 Simple rev counter uses an ESP32 with arduino core and an IR proximity sensor. Output via Bluetooth Serial.
 
@@ -14,7 +14,7 @@ It is currently configured to read up to about 6000rpm but could be made to go a
 changing the SAMPLE_RATE constant.
 
 It is intended that the sensor is pointed at a rotating disc, one half of which is painted white, and
-the other half black. This could equally be a rotating shaft. The sensor needs to be within a few cm
+the other half black. This could equally be a rotating shaft. The IR sensor needs to be within a few cm
 of the rotating object.
 
 
