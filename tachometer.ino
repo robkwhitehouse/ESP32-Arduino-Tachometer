@@ -22,10 +22,12 @@ BluetoothSerial SerialBT;
 #define IR_SENSOR_PIN 15
 #define SAMPLE_RATE 20 //samples per second
 uint32_t samplePeriod; //microseconds
-
 uint32_t IRprevious = 0;//Records the previous InfraRed sensor state
 uint32_t prevPulseTime = 0;//records millis() when new pulse
 byte IRpulse = 0;//Records the number of sensor transitions
+uint16_t sampleCtr = 0;
+uint32_t averageRPM = 0;
+uint32_t previousRPM = 0;
 
 hw_timer_t * timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
@@ -103,9 +105,13 @@ void loop() {
         period = isrTime - prevPulseTime;//milliseconds
         rpm = 60 * 1000 / period;
         prevPulseTime = isrTime;
+        averageRPM = (previousRPM + rpm) / 2;
+        previousRPM = rpm;
       }
     }
-    SerialBT.println(rpm);
- 
+    if (++sampleCtr > 3) { //send the result every 4th sample
+      SerialBT.println(averageRPM);
+      sampleCtr = 0;
+    }
   }
 }
