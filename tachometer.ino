@@ -21,11 +21,13 @@
 BluetoothSerial SerialBT;
 
 #define IR_SENSOR_PIN 15
-#define SAMPLE_RATE 20 //samples per second
+#define SAMPLE_RATE 400 //samples per second - should be fast enough for upto 6,000 RPM
 
 
 const uint32_t samplePeriod = 1000000/SAMPLE_RATE; //in microseconds
 const uint32_t sampleMillis = samplePeriod/1000;
+uint32_t pulsePeriod = 0;
+uint32_t ticks = 0;
 
 uint32_t IRprevious = 0;//Records the previous InfraRed sensor state
 uint32_t prevPulseTime = 0;//records millis() when new pulse
@@ -33,6 +35,7 @@ byte IRpulse = 0;//Records the number of sensor transitions
 uint16_t sampleCtr = 0;
 uint32_t averageRPM = 0;
 uint32_t previousRPM = 0;
+unsigned long prevBTsend = 0;
 
 hw_timer_t * timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
@@ -77,9 +80,10 @@ void setup() {
 
 void loop() {
   byte IRstate = 0;
-  uint32_t period = 0xFFFF;
   uint16_t rpm = 0;
+  unsigned long now;
   
+ 
   // If Timer has fired
   if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE){
     uint32_t isrCount = 0, isrTime = 0;
@@ -96,6 +100,7 @@ void loop() {
     Serial.print(isrTime);
     Serial.println(" ms");
 #endif
+    ticks++; 
     IRstate = digitalRead(IR_SENSOR_PIN);
     if ( IRstate != IRprevious ) {//Sensor transition has occurred
       IRpulse++;
@@ -103,20 +108,24 @@ void loop() {
       if (IRpulse > 1) { //two transitions = 1 rev
         IRpulse =0;
         //Calc period of revolution
-        period = isrTime - prevPulseTime;//milliseconds
+        pulsePeriod = isrTime - prevPulseTime;//milliseconds
         prevPulseTime = isrTime;
 
       } 
-    } else period += sampleMillis;//No new pulse this time around
+    } else pulsePeriod += sampleMillis;//No new pulse this time around
     
-    if (period) rpm = 60 * 1000 / period;
+    //Now calculate the RPM - need to check that period is not zero
+    if (pulsePeriod) rpm = 60 * 1000 / pulsePeriod;
     //provide a bit of smoothing
     averageRPM = (previousRPM + rpm) / 2;
     previousRPM = rpm; 
-       
-    if (++sampleCtr > 3) { //send the result every 4th sample
-      SerialBT.println(averageRPM);
-      sampleCtr = 0;
+    
+    //Send the result over Bluetooth 5 times per second
+    now=ticks*sampleMillis;//Time since start in millis
+    if ( now  > (prevBTsend + 200) ) {
+      Serial.println(now);
+        prevBTsend = now;
+        SerialBT.println(averageRPM);
     }
   }
 }
