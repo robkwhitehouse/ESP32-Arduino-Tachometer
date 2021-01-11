@@ -36,6 +36,8 @@ uint16_t sampleCtr = 0;
 uint32_t averageRPM = 0;
 uint32_t previousRPM = 0;
 unsigned long prevBTsend = 0;
+String calString("");
+PROGMEM float calibFactor =1.0;
 
 hw_timer_t * timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
@@ -48,16 +50,16 @@ class ringBuffer {
   private:
   byte index = 0;
   public:
-  uint32_t _array[10];
+  uint32_t _array[50];
   void add(uint32_t val) {
     _array[index] = val;
-    if (index == 9) index = 0;
+    if (index == 49) index = 0;
     else index++;
     }
   uint32_t average() {
     uint32_t sum = 0;
-    for ( int i=0; i <10; i++ ) sum += _array[i];
-    return( sum/10 );
+    for ( int i=0; i <50; i++ ) sum += _array[i];
+    return( sum/50 );
   }
 } smoother; 
 
@@ -94,7 +96,7 @@ void setup() {
 
   // Start an alarm
   timerAlarmEnable(timer);
-  delay(300);
+
   Serial.println("Bluetooth Tacho V0.5");
 }
 
@@ -102,7 +104,21 @@ void loop() {
   byte IRstate = 0;
   uint16_t rpm = 0;
   unsigned long now;
-  
+
+  //Calibration
+  if (SerialBT.available() > 0) {
+    char c=SerialBT.read();
+    if(c=='c') {
+        calString = "";
+        while ( SerialBT.available() > 0 ) {
+          c = SerialBT.read();
+          if (c == '\n') break;
+          calString += c;
+        }
+        calibFactor = calString.toFloat();
+        Serial.println(calibFactor);
+    }
+  }
  
   // If Timer has fired
   if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE){
