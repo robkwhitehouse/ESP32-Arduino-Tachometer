@@ -1,8 +1,8 @@
 # ESP32-Arduino-Tachometer
 
-V0.4 7/1/2021 - RKW - bob.whitehouse@btinternet.com
+V01.0 17/1/2021 - RKW - bob.whitehouse@btinternet.com
 
-***  In Test & Development - this code is working but is still undergoing improvement ***
+***  Status - working code - could probably be enhanced ***
 
 Simple rev counter uses an ESP32 with arduino core and an IR proximity sensor. Output via Bluetooth Serial.
 
